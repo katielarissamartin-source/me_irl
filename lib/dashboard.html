@@ -130,6 +130,27 @@ section{display:grid;gap:18px}
 .scale{display:flex;gap:4px}
 .scale button{font:600 12px var(--mono);padding:5px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);color:var(--fg);cursor:pointer}
 .scale button.on{background:var(--plate);color:var(--plate-ink);border-color:var(--plate)}
+.ci{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.ci>*{min-width:0}
+.scalebtns{display:flex;gap:6px;flex-wrap:wrap}
+.scalebtns button{min-width:42px;padding:9px 0;font:600 15px var(--mono);border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--fg);cursor:pointer;flex:1}
+.scalebtns button.on{background:var(--plate);color:var(--plate-ink);border-color:var(--plate)}
+.cirow{display:grid;gap:6px}
+.cirow label{font-size:13px;color:var(--muted)}
+.trends{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.trend{background:var(--panel2);border-radius:8px;padding:10px 12px;display:grid;gap:4px}
+.trend svg{width:100%;height:46px;display:block}
+.trend .v{font:900 24px/1 var(--display);font-variant-numeric:tabular-nums}
+.sets{display:grid;gap:6px}
+.setrow{display:grid;grid-template-columns:28px 1fr 1fr 32px;gap:8px;align-items:center}
+.setrow .n{font:600 12px var(--mono);color:var(--muted)}
+.step{display:flex;align-items:center;gap:4px}
+.step button{width:34px;height:38px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--fg);font:600 18px var(--mono);cursor:pointer;flex:none}
+.step input{width:100%;min-width:0;text-align:center}
+.pr{background:color-mix(in srgb,var(--plate) 18%,var(--panel));border:1px solid var(--plate);border-radius:10px;padding:14px;display:grid;gap:6px}
+.pr strong{font:900 26px/1 var(--display);text-transform:uppercase;color:var(--plate)}
+.hist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.hist li{background:var(--panel2);border-radius:8px;padding:9px 12px;font-size:14px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .mantra{border-top:1px solid var(--line);padding-top:24px;font:900 clamp(30px,6vw,56px)/1 var(--display);text-transform:uppercase}
 .mantra span{color:var(--plate)}
 @media (max-width:520px){.wk{grid-template-columns:1fr}.compare{grid-template-columns:1fr 1fr}}
@@ -144,6 +165,16 @@ section{display:grid;gap:18px}
   <p>Sixteen weeks ago you walked into Fitzroy Gym straight off a fibro flare. Since then your heart got 40 beats a minute more efficient, your HRV tripled, and you kept almost all your muscle while losing a small person's worth of fat. The next eight weeks aren't about starting. They're about stacking.</p>
   <div class="row"><span class="tag m">Measured</span><span class="tag r">Research</span><span class="tag i">My inference</span><span class="note">Every claim on this page carries one of these.</span></div>
 </header>
+
+<section aria-labelledby="ck">
+  <div class="eyebrow">Daily check-in · 20 seconds</div>
+  <h2 id="ck">How's the engine today?</h2>
+  <div class="chartbox" style="gap:14px">
+    <div class="ci" id="ciform"></div>
+    <div class="row"><input id="ci-note" class="in" style="flex:1;min-width:200px" placeholder="Anything worth noting? (optional)" aria-label="Check-in note"><button class="btn primary" type="button" id="ci-save">Save check-in</button><span class="note" id="ci-status"></span></div>
+  </div>
+  <div class="trends" id="trends"></div>
+</section>
 
 <section aria-labelledby="sb">
   <div class="eyebrow">Scoreboard</div>
@@ -205,6 +236,29 @@ section{display:grid;gap:18px}
   <p class="muted">Each one has its own weekly stretch goal and a session counter for the current week. Tick a stretch when you hit it.</p>
   <div class="tabs" role="tablist" id="tabs"></div>
   <div class="mod" role="tabpanel" id="modpanel"></div>
+</section>
+
+<section aria-labelledby="wl">
+  <div class="eyebrow">Workout logger</div>
+  <h2 id="wl">Log the session</h2>
+  <div class="food-top">
+    <div class="chartbox" style="gap:12px">
+      <div class="row">
+        <select id="wl-lift" class="in" aria-label="Lift" style="flex:1"></select>
+        <span class="tag i" id="wl-target"></span>
+      </div>
+      <div class="sets" id="wl-sets"></div>
+      <div class="row"><button class="btn" type="button" id="wl-add">+ Add set</button><button class="btn primary" type="button" id="wl-save">Save lift</button><span class="note" id="wl-status"></span></div>
+      <div id="wl-pr"></div>
+    </div>
+    <div class="chartbox" style="gap:10px">
+      <h3>Recent sessions</h3>
+      <ul class="hist" id="wl-hist"></ul>
+      <h3>Personal bests</h3>
+      <ul class="hist" id="wl-pbs"></ul>
+      <p class="note"><span class="tag r">Research</span> Best set is ranked by estimated 1-rep max (Epley: kg × (1 + reps ÷ 30)), so 8 reps at 55kg and 5 reps at 60kg compare fairly. Accurate enough for tracking progress in the 1–10 rep range.</p>
+    </div>
+  </div>
 </section>
 
 <section aria-labelledby="st">
@@ -570,6 +624,75 @@ function renderSync(){
 const gq=new URLSearchParams(location.search).get("google");
 if(gq){history.replaceState(null,"","/");if(gq==="connected")getJ("/api/sync").then(async()=>{await reloadSrv();board();chart()})}
 renderSync();
+const todayL=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+let checkins=LS("kt_checkins")||{};
+const CI=[{k:"energy",l:"Energy",min:1,max:5,good:"hi",lab:["Flat","Low","OK","Good","Wired"]},{k:"pain",l:"Pain / fibro",min:0,max:10,good:"lo"},{k:"mood",l:"Mood",min:1,max:5,good:"hi",lab:["Rough","Low","OK","Good","Great"]},{k:"sleep",l:"Sleep quality",min:1,max:5,good:"hi",lab:["Awful","Poor","OK","Good","Great"]}];
+let ciDraft={...(checkins[todayL()]||{})};
+function renderCI(){
+  document.getElementById("ciform").innerHTML=`<div class="cirow"><label for="ci-w">Weight (kg, optional)</label><input id="ci-w" class="in" type="number" step="0.05" inputmode="decimal" value="${ciDraft.w??""}" placeholder="e.g. 67.6"></div>`+CI.map(c=>{const vals=[];for(let v=c.min;v<=c.max;v++)vals.push(v);return `<div class="cirow"><label>${c.l}${ciDraft[c.k]!=null&&c.lab?` · ${c.lab[ciDraft[c.k]-1]}`:""}</label><div class="scalebtns" role="group" aria-label="${c.l}">${vals.map(v=>`<button type="button" class="${ciDraft[c.k]===v?"on":""}" data-ci="${c.k}:${v}">${v}</button>`).join("")}</div></div>`}).join("");
+  document.getElementById("ci-note").value=ciDraft.note||"";
+  document.getElementById("ci-status").textContent=checkins[todayL()]?"Today's check-in saved. Tap to update.":"";
+  renderTrends();
+}
+function spark(vals,min,max){const W=200,H=46,n=vals.length;if(!n)return"";const x=i=>n<2?W/2:i/(n-1)*(W-8)+4,y=v=>H-4-(v-min)/(max-min||1)*(H-8);const pts=vals.map((v,i)=>v==null?null:`${x(i)},${y(v)}`).filter(Boolean).join(" ");const last=[...vals].reverse().find(v=>v!=null);const li=vals.lastIndexOf(last);return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--plate)" stroke-width="2.5" stroke-linejoin="round"/>${last!=null?`<circle cx="${x(li)}" cy="${y(last)}" r="4" fill="var(--plate)"/>`:""}</svg>`}
+function renderTrends(){
+  const days=[];for(let i=27;i>=0;i--){const d=new Date(Date.now()-i*864e5);days.push(new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10))}
+  const rows=days.map(d=>checkins[d]||{});
+  const avg=(k,a,b)=>{const v=rows.slice(a,b).map(r=>r[k]).filter(x=>x!=null);return v.length?v.reduce((p,c)=>p+c,0)/v.length:null};
+  let streak=0;for(let i=days.length-1;i>=0;i--){if(checkins[days[i]])streak++;else if(i===days.length-1)continue;else break}
+  const card=c=>{const now=avg(c.k,21,28),prev=avg(c.k,14,21);let d="";if(now!=null&&prev!=null){const diff=now-prev,better=c.good==="hi"?diff>0:diff<0;d=Math.abs(diff)<0.2?"steady vs last week":`${better?"better":"worse"} vs last week (${diff>0?"+":""}${diff.toFixed(1)})`;}return `<div class="trend"><span class="note">${c.l} · 7-day avg</span><span class="v">${now!=null?now.toFixed(1):"–"}<small class="note"> /${c.max}</small></span>${spark(rows.map(r=>r[c.k]??null),c.min,c.max)}<span class="note">${d||"Needs a week of check-ins to compare"}</span></div>`};
+  document.getElementById("trends").innerHTML=`<div class="trend"><span class="note">Check-in streak</span><span class="v" style="color:var(--plate)">${streak}<small class="note"> days</small></span><span class="note">${Object.keys(checkins).length} check-ins total. Patterns show up after about 2 weeks.</span></div>`+CI.map(card).join("");
+}
+document.getElementById("ciform").addEventListener("click",e=>{const v=e.target.dataset.ci;if(!v)return;const [k,n]=v.split(":");ciDraft[k]=ciDraft[k]===+n?undefined:+n;ciDraft.w=parseFloat(document.getElementById("ci-w").value)||undefined;renderCI()});
+document.getElementById("ci-save").onclick=async()=>{
+  const w=parseFloat(document.getElementById("ci-w").value);ciDraft.w=w>30&&w<200?w:undefined;ciDraft.note=document.getElementById("ci-note").value.trim()||undefined;
+  checkins[todayL()]=Object.fromEntries(Object.entries(ciDraft).filter(([,v])=>v!==undefined));SS("kt_checkins",checkins);
+  if(ciDraft.w){await fetch("/api/weighins",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({rows:[{d:todayL(),w:ciDraft.w}],source:"checkin"})});await reloadSrv();board();chart()}
+  renderCI();document.getElementById("ci-status").textContent="Saved ✓";
+};
+
+let workouts=LS("kt_workouts")||[];
+const e1rm=s=>s.kg*(1+s.reps/30);
+let wlSets=[];
+function liftNames(){const n=lifts.map(l=>l.n);workouts.forEach(w=>{if(!n.includes(w.lift))n.push(w.lift)});return n}
+function bestFor(name,excludeId){let b=null;workouts.filter(w=>w.lift===name&&w.id!==excludeId).forEach(w=>w.sets.forEach(s=>{if(!b||e1rm(s)>e1rm(b.s))b={s,d:w.d}}));return b}
+function lastFor(name){return [...workouts].reverse().find(w=>w.lift===name)}
+function initSets(){const name=document.getElementById("wl-lift").value;const L=lifts.find(l=>l.n===name);const t=L?target(L,curWeek()):null;const last=lastFor(name);const kg=t||(last?Math.max(...last.sets.map(s=>s.kg)):20);wlSets=[{kg,reps:8},{kg,reps:8},{kg,reps:8}];renderSets()}
+function renderWL(){
+  const sel=document.getElementById("wl-lift");const cur=sel.value;
+  sel.innerHTML=liftNames().map(n=>`<option ${n===cur?"selected":""}>${esc(n)}</option>`).join("")+`<option value="__new">+ New lift…</option>`;
+  const name=sel.value;const L=lifts.find(l=>l.n===name);
+  document.getElementById("wl-target").textContent=L?`W${curWeek()+1} target ${target(L,curWeek())}kg`:"No ladder target";
+  if(!wlSets.length)initSets();else renderSets();
+  const fmt=d=>new Date(d).toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"});
+  document.getElementById("wl-hist").innerHTML=workouts.length?[...workouts].reverse().slice(0,8).map(w=>`<li><span><strong>${esc(w.lift)}</strong> · ${w.sets.map(s=>`${s.kg}×${s.reps}`).join(", ")}</span><span class="note">${fmt(w.d)}${w.pr?" · PR":""}</span></li>`).join(""):`<li><span class="note">No sessions logged yet. Your first one sets the baseline.</span></li>`;
+  const pbs=liftNames().map(n=>({n,b:bestFor(n)})).filter(x=>x.b);
+  document.getElementById("wl-pbs").innerHTML=pbs.length?pbs.map(x=>`<li><span><strong>${esc(x.n)}</strong> · ${x.b.s.kg}kg × ${x.b.s.reps}</span><span class="note">est. 1RM ${Math.round(e1rm(x.b.s))}kg · ${fmt(x.b.d)}</span></li>`).join(""):`<li><span class="note">PBs appear after your first logged lift.</span></li>`;
+}
+function renderSets(){
+  document.getElementById("wl-sets").innerHTML=`<div class="setrow note"><span></span><span>kg</span><span>reps</span><span></span></div>`+wlSets.map((s,i)=>`<div class="setrow"><span class="n">${i+1}</span><div class="step"><button type="button" data-st="${i}:kg:-2.5" aria-label="Less weight">−</button><input class="in" type="number" step="0.5" inputmode="decimal" value="${s.kg}" data-sv="${i}:kg" aria-label="Set ${i+1} kg"><button type="button" data-st="${i}:kg:2.5" aria-label="More weight">+</button></div><div class="step"><button type="button" data-st="${i}:reps:-1" aria-label="Fewer reps">−</button><input class="in" type="number" step="1" inputmode="numeric" value="${s.reps}" data-sv="${i}:reps" aria-label="Set ${i+1} reps"><button type="button" data-st="${i}:reps:1" aria-label="More reps">+</button></div><button type="button" class="btn" style="padding:6px" data-sd="${i}" aria-label="Remove set">×</button></div>`).join("");
+}
+document.getElementById("wl-lift").addEventListener("change",e=>{
+  if(e.target.value==="__new"){document.getElementById("wl-status").textContent="Add the lift in the load ladder section below (name + current kg), then pick it here.";e.target.selectedIndex=0}
+  wlSets=[];document.getElementById("wl-pr").innerHTML="";renderWL();
+});
+document.getElementById("wl-sets").addEventListener("click",e=>{const d=e.target.dataset;if(d.st){const [i,k,n]=d.st.split(":");wlSets[i][k]=Math.max(0,+(wlSets[i][k]+ +n).toFixed(2));renderSets()}else if(d.sd){wlSets.splice(+d.sd,1);renderSets()}});
+document.getElementById("wl-sets").addEventListener("change",e=>{const v=e.target.dataset.sv;if(!v)return;const [i,k]=v.split(":");wlSets[i][k]=Math.max(0,parseFloat(e.target.value)||0)});
+document.getElementById("wl-add").onclick=()=>{const l=wlSets[wlSets.length-1]||{kg:20,reps:8};wlSets.push({...l});renderSets()};
+document.getElementById("wl-save").onclick=()=>{
+  const name=document.getElementById("wl-lift").value;const sets=wlSets.filter(s=>s.kg>0&&s.reps>0);if(!sets.length)return;
+  const prev=bestFor(name);const top=sets.reduce((a,b)=>e1rm(b)>e1rm(a)?b:a);const isPR=!prev||e1rm(top)>e1rm(prev.s)+0.01;
+  const w={id:Date.now().toString(36),d:todayL(),lift:name,sets,pr:isPR&&!!prev};workouts.push(w);SS("kt_workouts",workouts);
+  const cw=curWeek(),k="str_"+cw;if(!workouts.some(x=>x.d===w.d&&x.id!==w.id)){sess[k]=(sess[k]||0)+1;SS("kt_sess",sess);renderMods()}
+  const L=lifts.find(l=>l.n===name);const heaviest=Math.max(...sets.filter(s=>s.reps>=6).map(s=>s.kg),0);
+  let pr="";
+  if(w.pr)pr=`<div class="pr"><strong>New PR · ${esc(name)}</strong><span>${top.kg}kg × ${top.reps}, est. 1RM ${Math.round(e1rm(top))}kg (was ${Math.round(e1rm(prev.s))}kg). <span class="tag m">Measured</span></span><span class="note">That's your nervous system recruiting more motor units and your muscle adapting. Exactly what the ladder is built for.</span>${L&&heaviest>L.kg?`<button class="btn primary" type="button" id="wl-bump" data-kg="${heaviest}" style="justify-self:start">Make ${heaviest}kg my new baseline</button>`:""}</div>`;
+  else if(!prev)pr=`<p class="note">First ${esc(name)} logged. This is your baseline; every session from here gets compared to it.</p>`;
+  document.getElementById("wl-pr").innerHTML=pr;document.getElementById("wl-status").textContent="Saved ✓";wlSets=[];renderWL();
+};
+document.getElementById("wl-pr").addEventListener("click",e=>{if(e.target.id!=="wl-bump")return;const name=document.getElementById("wl-lift").value;const L=lifts.find(l=>l.n===name);if(L){L.kg=+e.target.dataset.kg;SS("kt_lifts",lifts);renderLifts();renderMods();renderWL();e.target.outerHTML=`<span class="note">Baseline updated. The ladder recalculated from ${L.kg}kg.</span>`}});
+
+renderCI();renderWL();
 board();chart();renderWeeks();renderLifts();renderMods();renderPantry();renderMeals();renderDay();
 renderPhotos();
 </script>

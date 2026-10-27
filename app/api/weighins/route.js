@@ -10,12 +10,13 @@ export async function GET() {
 
 export async function POST(req) {
   await ensure();
-  const { rows, replace } = await req.json();
+  const { rows, replace, source } = await req.json();
+  const src = source === "checkin" ? "checkin" : "renpho_csv";
   if (replace) await sql`delete from weigh_ins where source = 'renpho_csv'`;
   for (const r of (rows || []).slice(0, 5000)) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(r.d) || !(r.w > 0)) continue;
-    await sql`insert into weigh_ins (day, weight, bf, ffm, visceral, source) values (${r.d}, ${r.w}, ${r.bf ?? null}, ${r.ffm ?? null}, ${r.v ?? null}, 'renpho_csv')
-      on conflict (day) do update set weight = excluded.weight, bf = coalesce(excluded.bf, weigh_ins.bf), ffm = coalesce(excluded.ffm, weigh_ins.ffm), visceral = coalesce(excluded.visceral, weigh_ins.visceral), source = 'renpho_csv'`;
+    await sql`insert into weigh_ins (day, weight, bf, ffm, visceral, source) values (${r.d}, ${r.w}, ${r.bf ?? null}, ${r.ffm ?? null}, ${r.v ?? null}, ${src})
+      on conflict (day) do update set weight = excluded.weight, bf = coalesce(excluded.bf, weigh_ins.bf), ffm = coalesce(excluded.ffm, weigh_ins.ffm), visceral = coalesce(excluded.visceral, weigh_ins.visceral), source = excluded.source`;
   }
   return NextResponse.json({ ok: true });
 }
