@@ -252,7 +252,7 @@ section{display:grid;gap:18px}
         <span class="tag i" id="wl-target"></span>
       </div>
       <div class="sets" id="wl-sets"></div>
-      <div class="row"><button class="btn primary" type="button" id="rest2">Start 2:00 rest</button><span class="note">Starts automatically when you tap + on reps.</span></div>
+      <div class="row"><button class="btn primary" type="button" id="rest2">Start 2:00 rest</button><span class="note">Keeps running with the screen locked; buzzes and beeps when rest is up.</span></div>
       <div class="row"><button class="btn" type="button" id="wl-add">+ Add set</button><button class="btn primary" type="button" id="wl-save">Save lift</button><span class="note" id="wl-status"></span></div>
       <div id="wl-pr"></div>
     </div>
@@ -707,7 +707,6 @@ document.getElementById("rest2").onclick=()=>startRest(120);
 document.getElementById("timer-add").onclick=()=>{if(document.getElementById("timer").classList.contains("done"))startRest(30);else{tEnd+=30000;tick()}};
 document.getElementById("timer-x").onclick=stopRest;
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&tEnd)tick()});
-document.getElementById("wl-sets").addEventListener("click",e=>{const d=e.target.dataset.st;if(d&&d.endsWith(":reps:1"))startRest(120)});
 
 renderCI();renderWL();
 board();chart();renderWeeks();renderLifts();renderMods();renderPantry();renderMeals();renderDay();
