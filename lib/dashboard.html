@@ -170,6 +170,16 @@ section{display:grid;gap:18px}
   <div class="row"><span class="tag m">Measured</span><span class="tag r">Research</span><span class="tag i">My inference</span><span class="note">Every claim on this page carries one of these.</span></div>
 </header>
 
+<section aria-labelledby="sh">
+  <div class="eyebrow">Share with your trainer</div>
+  <h2 id="sh">Trainer link</h2>
+  <div class="chartbox" style="gap:12px">
+    <p class="note">A separate read-only page with your weekly plan, load ladder, logged sessions, PBs and strength goals. It never shows check-ins, mood, pain, health notes, meals or the motivation sections. It updates live as you log.</p>
+    <div class="row" id="sh-opts"></div>
+    <div class="row" id="sh-link"></div>
+  </div>
+</section>
+
 <section aria-labelledby="ck">
   <div class="eyebrow">Daily check-in · 20 seconds</div>
   <h2 id="ck">How's the engine today?</h2>
@@ -707,6 +717,20 @@ document.getElementById("rest2").onclick=()=>startRest(120);
 document.getElementById("timer-add").onclick=()=>{if(document.getElementById("timer").classList.contains("done"))startRest(30);else{tEnd+=30000;tick()}};
 document.getElementById("timer-x").onclick=stopRest;
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&tEnd)tick()});
+
+let share=LS("kt_share")||{weight:false,bodycomp:false,photos:false};
+async function shareCall(body){const r=await fetch("/api/share",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});if(r.ok){share=await r.json();KV.kt_share=share}renderShare()}
+function renderShare(){
+  const opt=(k,l)=>`<label class="chip ${share[k]?"on":""}" style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" data-sh="${k}" ${share[k]?"checked":""}> ${l}</label>`;
+  document.getElementById("sh-opts").innerHTML=`<span class="note">Also include:</span>${opt("weight","Body weight trend")}${opt("bodycomp","Body fat & fat-free mass")}${opt("photos","Progress photos")}`;
+  const url=share.token?location.origin+"/trainer?k="+share.token:"";
+  document.getElementById("sh-link").innerHTML=share.token?`<input class="in" id="sh-url" readonly value="${url}" style="flex:1;min-width:220px" aria-label="Trainer link"><button class="btn primary" type="button" id="sh-copy">Copy link</button><a class="btn" href="${url}" target="_blank" rel="noopener">Preview</a><button class="btn" type="button" id="sh-revoke">Turn off link</button>`:`<button class="btn primary" type="button" id="sh-create">Create trainer link</button><span class="note">Anyone with the link can view it, so send it to your trainer only.</span>`;
+  const c=document.getElementById("sh-copy");if(c)c.onclick=async()=>{try{await navigator.clipboard.writeText(url);c.textContent="Copied ✓"}catch(e){const i=document.getElementById("sh-url");i.select();c.textContent="Selected, copy it"}};
+  const cr=document.getElementById("sh-create");if(cr)cr.onclick=()=>shareCall({action:"create"});
+  const rv=document.getElementById("sh-revoke");if(rv)rv.onclick=()=>shareCall({action:"revoke"});
+}
+document.getElementById("sh-opts").addEventListener("change",e=>{const k=e.target.dataset.sh;if(k)shareCall({[k]:e.target.checked})});
+renderShare();
 
 renderCI();renderWL();
 board();chart();renderWeeks();renderLifts();renderMods();renderPantry();renderMeals();renderDay();

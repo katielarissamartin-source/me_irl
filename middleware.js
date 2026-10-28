@@ -5,7 +5,7 @@ const OPEN = ["/login", "/api/login", "/manifest.webmanifest", "/icon.svg", "/sw
 
 export async function middleware(req) {
   const p = req.nextUrl.pathname;
-  if (OPEN.includes(p)) return NextResponse.next();
+  if (OPEN.includes(p) || p === "/trainer" || p === "/trainer/photo") return NextResponse.next();
   if (p === "/api/sync" && req.headers.get("authorization") === `Bearer ${process.env.CRON_SECRET}`) return NextResponse.next();
   if (await validToken(req.cookies.get(cookieName)?.value)) return NextResponse.next();
   if (p.startsWith("/api/")) return NextResponse.json({ error: "signed_out" }, { status: 401 });
