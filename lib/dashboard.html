@@ -262,7 +262,7 @@ section{display:grid;gap:18px}
         <span class="tag i" id="wl-target"></span>
       </div>
       <div class="sets" id="wl-sets"></div>
-      <div class="row"><button class="btn primary" type="button" id="rest2">Start 2:00 rest</button><span class="note">Keeps the screen awake and beeps when rest is up. If you lock your phone it stays accurate, but the beep waits until you open the app.</span></div>
+      <div class="row"><button class="btn primary" type="button" id="rest2">Start 2:00 rest</button><span class="note" id="rest-note"></span></div>
       <div class="row"><button class="btn" type="button" id="wl-add">+ Add set</button><button class="btn primary" type="button" id="wl-save">Save lift</button><span class="note" id="wl-status"></span></div>
       <div id="wl-pr"></div>
     </div>
@@ -710,11 +710,30 @@ document.getElementById("wl-pr").addEventListener("click",e=>{if(e.target.id!=="
 
 let tEnd=0,tInt=null,actx=null,wake=null;
 function beep(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();[0,.35,.7].forEach(o=>{const os=actx.createOscillator(),g=actx.createGain();os.frequency.value=880;os.connect(g);g.connect(actx.destination);const t=actx.currentTime+o;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.4,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+.28);os.start(t);os.stop(t+.3)})}catch(e){}try{navigator.vibrate&&navigator.vibrate([300,150,300,150,300])}catch(e){}}
-function tick(){const el=document.getElementById("timer"),left=Math.max(0,Math.round((tEnd-Date.now())/1000));document.getElementById("timer-t").textContent=`${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}`;if(left===0&&!el.classList.contains("done")){el.classList.add("done");document.getElementById("timer-t").textContent="Go";beep();clearInterval(tInt);try{wake&&wake.release()}catch(e){}}}
-async function startRest(sec=120){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume()}catch(e){}tEnd=Date.now()+sec*1000;const el=document.getElementById("timer");el.hidden=false;el.classList.remove("done");clearInterval(tInt);tInt=setInterval(tick,250);tick();try{wake=await navigator.wakeLock.request("screen")}catch(e){}}
-function stopRest(){clearInterval(tInt);document.getElementById("timer").hidden=true;try{wake&&wake.release()}catch(e){}}
+function tick(){const el=document.getElementById("timer"),left=Math.max(0,Math.round((tEnd-Date.now())/1000));document.getElementById("timer-t").textContent=`${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}`;if(left===0&&!el.classList.contains("done")){el.classList.add("done");document.getElementById("timer-t").textContent="Go";if(!document.hidden)beep();clearInterval(tInt);try{wake&&wake.release()}catch(e){}}}
+let pushOk=null;
+const b64u=s=>{const p="=".repeat((4-s.length%4)%4),b=atob((s+p).replace(/-/g,"+").replace(/_/g,"/"));return Uint8Array.from(b,c=>c.charCodeAt(0))};
+async function ensurePush(){
+  if(pushOk!==null)return pushOk;
+  try{
+    if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window))return pushOk=false;
+    const perm=Notification.permission==="default"?await Notification.requestPermission():Notification.permission;
+    if(perm!=="granted")return pushOk=false;
+    const reg=await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub){const {key}=await getJ("/api/push");if(!key)return pushOk=false;sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(key)})}
+    await fetch("/api/push",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(sub)});
+    return pushOk=true;
+  }catch(e){return pushOk=false}
+}
+function serverTimer(sec){fetch("/api/timer",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(sec?{seconds:sec}:{cancel:true})}).catch(()=>{})}
+function timerNote(){const n=document.getElementById("rest-note");if(!n)return;n.textContent=pushOk?"You'll get a notification when rest is up, even with your phone locked.":pushOk===false?(window.matchMedia("(display-mode: standalone)").matches?"Notifications are off. Turn them on in Settings → Notifications → Lock-In, then reopen.":"Open Lock-In from your home screen icon to get lock-screen notifications."):"Tap Start once and allow notifications to get alerts with your phone locked."}
+async function startRest(sec=120){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume()}catch(e){}const pp=ensurePush();tEnd=Date.now()+sec*1000;pp.then(()=>{timerNote();serverTimer(Math.round((tEnd-Date.now())/1000))});const el=document.getElementById("timer");el.hidden=false;el.classList.remove("done");clearInterval(tInt);tInt=setInterval(tick,250);tick();try{wake=await navigator.wakeLock.request("screen")}catch(e){}}
+function stopRest(){serverTimer(0);tEnd=0;clearInterval(tInt);document.getElementById("timer").hidden=true;try{wake&&wake.release()}catch(e){}}
 document.getElementById("rest2").onclick=()=>startRest(120);
-document.getElementById("timer-add").onclick=()=>{if(document.getElementById("timer").classList.contains("done"))startRest(30);else{tEnd+=30000;tick()}};
+document.getElementById("timer-add").onclick=()=>{if(document.getElementById("timer").classList.contains("done"))startRest(30);else{tEnd+=30000;tick();serverTimer(Math.round((tEnd-Date.now())/1000))}};
+if("serviceWorker" in navigator)navigator.serviceWorker.addEventListener("message",e=>{if(e.data&&e.data.type==="timer-done"&&tEnd)tick()});
+if("Notification" in window&&Notification.permission==="granted")ensurePush().then(timerNote);else timerNote();
 document.getElementById("timer-x").onclick=stopRest;
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&tEnd)tick()});
 
